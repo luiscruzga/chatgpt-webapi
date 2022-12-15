@@ -1,0 +1,29 @@
+# Build docker image and deploy to github packages
+name: Docker
+
+on:
+  schedule:
+    - cron: '44 13 * * *'
+  push:
+    branches: [ "master" ]
+    tags: [ 'v*.*.*' ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Build the Docker image
+        run: docker build . -t chatgpt-webapi
+      - name: Log into registry
+        run: echo ${{ secrets.GITHUB_TOKEN }} | docker login docker.pkg.github.com -u ${{ github.actor }} --password-stdin
+      - name: Push to registry
+        run: |
+          TAG="latest"
+          if [[ $GITHUB_REF == refs/tags/* ]]; then
+            TAG=${GITHUB_REF#refs/tags/}
+          elif [[ $GITHUB_REF == refs/heads/* ]]; then
+            TAG=${GITHUB_REF#refs/heads/}
+          fi
+          docker tag chatgpt-webapi:latest docker.pkg.github.com/${{ github.repository }}/chatgpt-webapi:${TAG}
+          docker push docker.pkg.github.com/${{ github.repository }}/chatgpt-webapi:${TAG}
