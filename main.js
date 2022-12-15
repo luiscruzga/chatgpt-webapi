@@ -7,7 +7,11 @@ const PORT =  process.env.PORT||8080;
 const OPENAI_EMAIL= Process.env.OPENAI_EMAIL;
 const OPENAI_PASSWORD=Process.env.OPENAI_PASSWORD;
 const OPENAI_SESSION_TOKEN=Process.env.OPENAI_SESSION_TOKEN;
+
+const EXECUTION_QUEUE=[];
 let GPT;
+let LOADING_GPT=false;
+
 
 if(!OPENAI_SESSION_TOKEN&&(!OPENAI_EMAIL||!OPENAI_PASSWORD)){
     console.error(`Missing OpenAI credentials. 
@@ -18,7 +22,15 @@ if(!AUTH_KEY){
     console.warn("Auth key not set! Everyone can access this instance.")
 }
 
-let LOADING_GPT=false;
+
+async function loopExecution() {
+    if (EXECUTION_QUEUE.length > 0) {
+        const next = EXECUTION_QUEUE.shift();
+        await next();
+    }
+    setTimeout(loopExecution, 1000);
+}
+loopExecution();
 
 async function getChatGPT() {
     try{
@@ -27,8 +39,6 @@ async function getChatGPT() {
             Please ensure that either OPENAI_EMAIL and OPENAI_PASSWORD or OPENAI_SESSION_TOKEN are set in your environment variables.`;
         }
 
-        while(LOADING_GPT) await new Promise(resolve=>setTimeout(resolve,100));
-        LOADING_GPT=true;    
     
         if(GPT){
             try{
@@ -56,7 +66,7 @@ async function getChatGPT() {
     }catch(e){
         console.error(e);
     }
-    LOADING_GPT=false;
+
     return GPT;
 }
 
@@ -89,25 +99,29 @@ const handleRequest=async (authKey,message,conversationId)=>{
 }
 
 app.post('/', async (req, res) => {
-    res.contentType('application/json');
-    try{        
-        const response = await handleRequest(req.body.authKey,req.body.message, req.body.conversationId);
-        res.send({response:response});
-    }catch(e){
-        res.send({error:e});
-    }
-    res.end();
+    EXECUTION_QUEUE.push(async ()=>{
+        res.contentType('application/json');
+        try{        
+            const response = await handleRequest(req.body.authKey,req.body.message, req.body.conversationId);
+            res.send({response:response});
+        }catch(e){
+            res.send({error:e});
+        }
+        res.end();
+    });
 });
 
 app.get('/', async (req, res) => {
-    res.contentType('application/json');
-    try{
-        const response = await handleRequest(req.query.authKey,req.query.message,req.query.conversationId);
-        res.send({response:response});
-    }catch(e){
-        res.send({error:e});
-    }
-    res.end();
+    EXECUTION_QUEUE.push(async ()=>{
+        res.contentType('application/json');
+        try{
+            const response = await handleRequest(req.query.authKey,req.query.message,req.query.conversationId);
+            res.send({response:response});
+        }catch(e){
+            res.send({error:e});
+        }
+        res.end();
+    });
 });
 
 app.listen(PORT);
