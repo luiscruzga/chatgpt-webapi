@@ -81,9 +81,9 @@ app.post('/', async (req, res) => {
     res.contentType('application/json');
     try{        
         const response = await handleRequest(req.body.authKey,req.body.message, req.body.conversationId);
-        req.send({response:response});
+        res.send({response:response});
     }catch(e){
-        req.send({error:e});
+        res.send({error:e});
     }
     req.end();
 });
