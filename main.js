@@ -18,34 +18,45 @@ if(!AUTH_KEY){
     console.warn("Auth key not set! Everyone can access this instance.")
 }
 
+let LOADING_GPT=false;
+
 async function getChatGPT() {
-    if(!OPENAI_SESSION_TOKEN&&(!OPENAI_EMAIL||!OPENAI_PASSWORD)){
-        throw `Missing OpenAI credentials. 
-        Please ensure that either OPENAI_EMAIL and OPENAI_PASSWORD or OPENAI_SESSION_TOKEN are set in your environment variables.`;
-    }
-   
-    if(GPT){
-        try{
-            await GPT.ensureAuth();
-        }catch(e){
-            GPT=null;
+    try{
+        if(!OPENAI_SESSION_TOKEN&&(!OPENAI_EMAIL||!OPENAI_PASSWORD)){
+            throw `Missing OpenAI credentials. 
+            Please ensure that either OPENAI_EMAIL and OPENAI_PASSWORD or OPENAI_SESSION_TOKEN are set in your environment variables.`;
         }
+
+        while(LOADING_GPT) await new Promise(resolve=>setTimeout(resolve,100));
+        LOADING_GPT=true;    
+    
+        if(GPT){
+            try{
+                await GPT.ensureAuth();
+            }catch(e){
+                GPT=null;
+            }
+        }
+
+        if(!GPT){
+            const loginData=OPENAI_SESSION_TOKEN?{}:{
+                email: OPENAI_EMAIL,
+                password: OPENAI_PASSWORD
+            };
+            
+            const openAIAuth = await getOpenAIAuth(loginData);
+
+            if(OPENAI_SESSION_TOKEN) openAIAuth.sessionToken=OPENAI_SESSION_TOKEN;
+            
+        
+            GPT = new ChatGPTAPI({ ...openAIAuth });
+            await GPT.ensureAuth();
+        }
+
+    }catch(e){
+        console.error(e);
     }
-    if(GPT)return GPT;
-
-    const loginData=OPENAI_SESSION_TOKEN?{}:{
-        email: OPENAI_EMAIL,
-        password: OPENAI_PASSWORD
-    };
-    
-    const openAIAuth = await getOpenAIAuth(loginData);
-
-    if(OPENAI_SESSION_TOKEN) openAIAuth.sessionToken=OPENAI_SESSION_TOKEN;
-    
-  
-    GPT = new ChatGPTAPI({ ...openAIAuth });
-    await GPT.ensureAuth();
-   
+    LOADING_GPT=false;
     return GPT;
 }
 
@@ -85,7 +96,7 @@ app.post('/', async (req, res) => {
     }catch(e){
         res.send({error:e});
     }
-    req.end();
+    res.end();
 });
 
 app.get('/', async (req, res) => {
