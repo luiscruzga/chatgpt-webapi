@@ -28,7 +28,7 @@ async function loopExecution() {
         const next = EXECUTION_QUEUE.shift();
         await next();
     }
-    setTimeout(loopExecution, 1000);
+    setTimeout(loopExecution, 5000);
 }
 loopExecution();
 
