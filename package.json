@@ -3,13 +3,16 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
-  "scripts": {},
+  "scripts": {
+    "start": "node main.js"
+  },
   "author": "",
   "license": "Public Domain",
   "type": "module",
   "dependencies": {
-    "chatgpt": "^2.3.3",
+    "chatgpt": "^3.3.10",
     "cors": "^2.8.5",
+    "dotenv": "^16.0.3",
     "express": "^4.18.2",
     "puppeteer": "^19.4.0"
   }

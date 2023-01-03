@@ -1,19 +1,18 @@
+import * as dotenv from 'dotenv';
+dotenv.config();
 import Express from 'express';
 import Cors from 'cors';
-import { ChatGPTAPI, getOpenAIAuth } from 'chatgpt'
-import Process from 'process';
-const AUTH_KEY=process.env.AUTH_KEY;
-const PORT =  process.env.PORT||8080;
-const OPENAI_EMAIL= Process.env.OPENAI_EMAIL;
-const OPENAI_PASSWORD=Process.env.OPENAI_PASSWORD;
-const OPENAI_SESSION_TOKEN=Process.env.OPENAI_SESSION_TOKEN;
+import { ChatGPTAPIBrowser } from 'chatgpt'
+const AUTH_KEY = process.env.AUTH_KEY;
+const PORT = process.env.PORT||8080;
+const OPENAI_EMAIL = process.env.OPENAI_EMAIL;
+const OPENAI_PASSWORD = process.env.OPENAI_PASSWORD;
 
 const EXECUTION_QUEUE=[];
-let GPT;
-let LOADING_GPT=false;
+let api;
+let isLogged=false;
 
-
-if(!OPENAI_SESSION_TOKEN&&(!OPENAI_EMAIL||!OPENAI_PASSWORD)){
+if(!OPENAI_EMAIL||!OPENAI_PASSWORD){
     console.error(`Missing OpenAI credentials. 
     Please ensure that either OPENAI_EMAIL and OPENAI_PASSWORD or OPENAI_SESSION_TOKEN are set in your environment variables.`);
 }
@@ -32,45 +31,27 @@ async function loopExecution() {
 }
 loopExecution();
 
-async function getChatGPT() {
-    try{
-        if(!OPENAI_SESSION_TOKEN&&(!OPENAI_EMAIL||!OPENAI_PASSWORD)){
-            throw `Missing OpenAI credentials. 
-            Please ensure that either OPENAI_EMAIL and OPENAI_PASSWORD or OPENAI_SESSION_TOKEN are set in your environment variables.`;
-        }
-
-    
-        if(GPT){
-            try{
-                await GPT.ensureAuth();
-            }catch(e){
-                GPT=null;
-            }
-        }
-
-        if(!GPT){
-            const loginData=OPENAI_SESSION_TOKEN?{}:{
-                email: OPENAI_EMAIL,
-                password: OPENAI_PASSWORD
-            };
-            
-            const openAIAuth = await getOpenAIAuth(loginData);
-
-            if(OPENAI_SESSION_TOKEN) openAIAuth.sessionToken=OPENAI_SESSION_TOKEN;
-            
+const initChatgpt = async() => {
+    try {
+        api = new ChatGPTAPIBrowser({ 
+            email: process.env.OPENAI_EMAIL,
+            password: process.env.OPENAI_PASSWORD,
+            isGoogleLogin: process.env.isGoogleLogin,
+            debug: false,
+            minimize: true
+        });
         
-            GPT = new ChatGPTAPI({ ...openAIAuth });
-            await GPT.ensureAuth();
-        }
-
-    }catch(e){
-        console.error(e);
+        await api.initSession();
+        isLogged = true;
+        console.log('GPTChat init');
+        return true;
+    } catch (err) {
+        console.log(err);
+        return err;
     }
-
-    return GPT;
 }
 
-
+initChatgpt();
 
 const app = Express();
 app.use(Cors());
@@ -82,9 +63,7 @@ const handleRequest=async (authKey,message,conversationId)=>{
         throw "Invalid key";
     }
     console.log("Request",message);
-    const api = await getChatGPT();
-    console.log("Authenticated");
-
+    
     let conversation=api;
     if(conversationId){
         console.log("Get conversation with id",conversationId);
@@ -98,7 +77,7 @@ const handleRequest=async (authKey,message,conversationId)=>{
     return response;  
 }
 
-app.post('/', async (req, res) => {
+app.post('/chat', async (req, res) => {
     EXECUTION_QUEUE.push(async ()=>{
         res.contentType('application/json');
         try{        
@@ -111,18 +90,6 @@ app.post('/', async (req, res) => {
     });
 });
 
-app.get('/', async (req, res) => {
-    EXECUTION_QUEUE.push(async ()=>{
-        res.contentType('application/json');
-        try{
-            const response = await handleRequest(req.query.authKey,req.query.message,req.query.conversationId);
-            res.send({response:response});
-        }catch(e){
-            res.send({error:e});
-        }
-        res.end();
-    });
+app.listen(PORT, () => {
+    console.log(`App listening on port ${PORT}`)
 });
-
-app.listen(PORT);
-console.info(`Server started on port ${PORT}`);

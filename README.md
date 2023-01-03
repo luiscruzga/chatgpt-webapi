@@ -6,13 +6,7 @@ Implementation of [transitive-bullshit/chatgpt-api](https://github.com/transitiv
 
 ## RUN
 ```
-docker run \
---restart=always \
---name="chatgpt-webapi" \
--p8080:8080 \
--eAUTH_KEY="SECRET_AUTH_KEY" \
--eOPENAI_SESSION_TOKEN="XXXXXXXXXXXXX" \
-ghcr.io/riccardobl/chatgpt-webapi/chatgpt-webapi:master
+docker run --restart=always -dp 8080:8080 chatgpt-webapi
 ```
 
 ## REQUEST
@@ -65,5 +59,5 @@ CONTENT TYPE
 
 ## BUILD
 ```
-docker build . -t chatgpt-webapi
+ docker build -t chatgpt-webapi .
 ```

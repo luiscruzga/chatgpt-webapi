@@ -27,6 +27,8 @@ ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD true
 
 RUN mkdir -p /app/
 WORKDIR /app/
+ADD .env /app
+ADD .env.example /app
 ADD main.js /app
 ADD package.json /app
 ADD package-lock.json /app
@@ -39,13 +41,6 @@ RUN chmod +x /entrypoint.sh
 RUN groupadd -r app && useradd -m  -g app app
 RUN chown -R app:app /app
 USER app
-
-ENV AUTH_KEY=""
-ENV PORT 8080
-ENV OPENAI_EMAIL=""
-ENV OPENAI_PASSWORD=""
-ENV OPENAI_SESSION_TOKEN=""
-
 
 ENTRYPOINT ["/entrypoint.sh","node", "main.js"]
 
