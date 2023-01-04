@@ -1,20 +1,26 @@
 import * as dotenv from 'dotenv';
 dotenv.config();
 import Express from 'express';
+import bodyParser from 'body-parser';
 import Cors from 'cors';
-import { ChatGPTAPIBrowser } from 'chatgpt'
+import chatGPT from 'chatgpt-io';
 const AUTH_KEY = process.env.AUTH_KEY;
 const PORT = process.env.PORT||8080;
-const OPENAI_EMAIL = process.env.OPENAI_EMAIL;
-const OPENAI_PASSWORD = process.env.OPENAI_PASSWORD;
+const OPENAI_SESSION_TOKEN = process.env.OPENAI_SESSION_TOKEN;
 
 const EXECUTION_QUEUE=[];
 let api;
 let isLogged=false;
 
-if(!OPENAI_EMAIL||!OPENAI_PASSWORD){
+const app = Express();
+app.use(Cors());
+app.use(bodyParser.urlencoded({limit: '240mb', extended: true})); 
+app.use(bodyParser.json({limit: '240mb'})); 
+app.use(bodyParser.raw({type: 'application/octet-stream'}));
+
+if(!OPENAI_SESSION_TOKEN){
     console.error(`Missing OpenAI credentials. 
-    Please ensure that either OPENAI_EMAIL and OPENAI_PASSWORD or OPENAI_SESSION_TOKEN are set in your environment variables.`);
+    Please ensure that either OPENAI_SESSION_TOKEN are set in your environment variables.`);
 }
 
 if(!AUTH_KEY){
@@ -33,15 +39,9 @@ loopExecution();
 
 const initChatgpt = async() => {
     try {
-        api = new ChatGPTAPIBrowser({ 
-            email: process.env.OPENAI_EMAIL,
-            password: process.env.OPENAI_PASSWORD,
-            isGoogleLogin: process.env.isGoogleLogin,
-            debug: false,
-            minimize: true
-        });
+        api = new chatGPT(OPENAI_SESSION_TOKEN);
         
-        await api.initSession();
+        await api.waitForReady();
         isLogged = true;
         console.log('GPTChat init');
         return true;
@@ -53,28 +53,18 @@ const initChatgpt = async() => {
 
 initChatgpt();
 
-const app = Express();
-app.use(Cors());
-app.use(Express.json());
-
 const handleRequest=async (authKey,message,conversationId)=>{
     if(!message) throw "No message specified";
     if (AUTH_KEY && authKey !== AUTH_KEY) {
         throw "Invalid key";
     }
-    console.log("Request",message);
+    console.log("Request",message, conversationId);
     
-    let conversation=api;
-    if(conversationId){
-        console.log("Get conversation with id",conversationId);
-        conversation=await api.getConversation({
-            conversationId:conversationId
-        });
-    }
-    
-    const response = await conversation.sendMessage(message);
-    console.log("Response",response);
-    return response;  
+    let response;
+    if (conversationId) response = await api.ask(message, conversationId);
+    else response = await api.ask(message);
+    console.log('Response length', response.length);
+    return response;
 }
 
 app.post('/chat', async (req, res) => {
@@ -84,6 +74,7 @@ app.post('/chat', async (req, res) => {
             const response = await handleRequest(req.body.authKey,req.body.message, req.body.conversationId);
             res.send({response:response});
         }catch(e){
+            console.log('ERROR: ', e);
             res.send({error:e});
         }
         res.end();
