@@ -1,5 +1,6 @@
 import * as dotenv from 'dotenv';
 dotenv.config();
+import showdown from 'showdown';
 import Express from 'express';
 import bodyParser from 'body-parser';
 import Cors from 'cors';
@@ -27,6 +28,13 @@ if(!AUTH_KEY){
     console.warn("Auth key not set! Everyone can access this instance.")
 }
 
+const escapeRegExp = (string) => {
+    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  };
+  
+  const replaceAll = (str, term, replacement) => {
+    return str.replace(new RegExp(escapeRegExp(term), 'g'), replacement).trim();
+  };
 
 async function loopExecution() {
     if (EXECUTION_QUEUE.length > 0) {
@@ -70,9 +78,19 @@ const handleRequest=async (authKey,message,conversationId)=>{
 app.post('/chat', async (req, res) => {
     EXECUTION_QUEUE.push(async ()=>{
         res.contentType('application/json');
-        try{        
-            const response = await handleRequest(req.body.authKey,req.body.message, req.body.conversationId);
-            res.send({response:response});
+        try{
+            let response = await handleRequest(req.body.authKey,req.body.message, req.body.conversationId);
+            if (req.body.formatToHtml) {
+                const converter = new showdown.Converter();
+                let responseFormat = replaceAll(response, `\n`, `
+`)
+                /*responseFormat = nmd(responseFormat);*/
+                responseFormat = converter.makeHtml(responseFormat);
+
+                res.send({response, responseFormat})
+            } else {
+                res.send({response:response});
+            }
         }catch(e){
             console.log('ERROR: ', e);
             res.send({error:e});
