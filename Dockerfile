@@ -29,7 +29,7 @@ RUN mkdir -p /app/
 WORKDIR /app/
 ADD .env /app
 ADD .env.example /app
-ADD main.js /app
+ADD index.js /app
 ADD package.json /app
 ADD package-lock.json /app
 ADD entrypoint.sh /
@@ -42,5 +42,5 @@ RUN groupadd -r app && useradd -m  -g app app
 RUN chown -R app:app /app
 USER app
 
-ENTRYPOINT ["/entrypoint.sh","node", "main.js"]
+ENTRYPOINT ["/entrypoint.sh","node", "index.js"]
 
