@@ -12,7 +12,7 @@
   "dependencies": {
     "body-parser": "^1.20.1",
     "chatgpt": "^3.3.10",
-    "chatgpt-io": "^1.0.4",
+    "chatgpt-io": "^1.0.5",
     "cors": "^2.8.5",
     "dotenv": "^16.0.3",
     "express": "^4.18.2",

@@ -43,22 +43,29 @@ const diffMinutes = (dt2, dt1) => {
   return Math.abs(Math.round(diff));
 }
 
+// Init session
+const initChatGpt = async () => {
+  const bot = new chatGPT(OPENAI_SESSION_TOKEN);
+  await bot.waitForReady();
+  console.log('GPTChat init');
+}
+
+initChatGpt();
+
 app.post('/chat', async (req, res) => {
   res.contentType('application/json');
   try {
-    const { sessiontoken } = req.headers;
+    //const { sessiontoken } = req.headers;
     const { authKey, message, conversationId, formatToHtml } = req.body;
 
-    if (!sessiontoken) return res.status(403).json({ error: 'No sessiontoken specified!' });
+    //if (!sessiontoken) return res.status(403).json({ error: 'No sessiontoken specified!' });
     if (!message) throw "No message specified!";
     if (AUTH_KEY && authKey !== AUTH_KEY) throw "Invalid key!";
-
-    const startDate = new Date();
-    const bot = new chatGPT(sessiontoken);
-    await bot.waitForReady();
-    console.log('GPTChat init');
-    console.log("Request", message, conversationId);
+    if (!bot.ready) throw "Chatbot is not ready yet";
     
+    const startDate = new Date();
+    console.log("Request", message, conversationId);
+
     let response;
     if (conversationId) response = await bot.ask(message, conversationId);
     else response = await bot.ask(message);
