@@ -3,14 +3,12 @@ dotenv.config();
 import showdown from 'showdown';
 import Express from 'express';
 import bodyParser from 'body-parser';
-import Cors from 'cors';
 import ChatGPT from './chatgpt.js';
 const AUTH_KEY = process.env.AUTH_KEY;
 const PORT = process.env.PORT||8080;
 const OPENAI_SESSION_TOKEN = process.env.OPENAI_SESSION_TOKEN;
 
 const app = Express();
-app.use(Cors());
 app.use(bodyParser.urlencoded({limit: '240mb', extended: true})); 
 app.use(bodyParser.json({limit: '240mb'})); 
 app.use(bodyParser.raw({type: 'application/octet-stream'}));
@@ -21,11 +19,6 @@ app.use((req, res, next) => {
   });
   next();
 });
-
-if (!OPENAI_SESSION_TOKEN){
-  console.error(`Missing OpenAI credentials. 
-    Please ensure that either OPENAI_SESSION_TOKEN are set in your environment variables.`);
-}
 
 if (!AUTH_KEY){
   console.warn("Auth key not set! Everyone can access this instance.");
