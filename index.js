@@ -1,14 +1,25 @@
 import * as dotenv from 'dotenv';
 dotenv.config();
 import showdown from 'showdown';
-import fastify from 'fastify';
+import Express from 'express';
+import compression from 'compression';
+import bodyParser from 'body-parser';
 import ChatGPT from './chatgpt.js';
 const AUTH_KEY = process.env.AUTH_KEY;
 const PORT = process.env.PORT||8080;
-const OPENAI_SESSION_TOKEN = process.env.OPENAI_SESSION_TOKEN;
 
-const app = fastify();
-app.server.setTimeout(120000);
+const app = Express();
+app.use(bodyParser.urlencoded({limit: '240mb', extended: true})); 
+app.use(bodyParser.json({limit: '240mb'})); 
+app.use(bodyParser.raw({type: 'application/octet-stream'}));
+app.use(compression());
+app.use((req, res, next) => {
+  res.setTimeout(120000, () => {
+    console.log('Request has timed out.');
+    res.status(408).json({ error: 'Request has timed out!' });
+  });
+  next();
+});
 
 if (!AUTH_KEY){
   console.warn("Auth key not set! Everyone can access this instance.");
@@ -26,6 +37,7 @@ const diffSeconds = (dt2, dt1) => {
 }
 
 app.post('/chat', async (req, res) => {
+  res.contentType('application/json');
   try {
     const { sessiontoken } = req.headers;
     const { authKey, message, conversationId, formatToHtml } = req.body;
@@ -74,6 +86,6 @@ app.post('/chat', async (req, res) => {
   res.end();
 });
 
-app.listen({ port: PORT }, () => {
-  console.log(`App listening on port ${PORT}`)
+app.listen(PORT, () => {
+  console.log(`App express listening on port ${PORT}`)
 });
